@@ -5,8 +5,10 @@ import os
 import subprocess
 import sys
 import tempfile
-from datetime import date, datetime
+from datetime import datetime
+from datetime import date as d
 
+import click
 import yaml
 from mite import Mite
 
@@ -15,17 +17,15 @@ if sys.version_info < (3,):
 
 
 MITE_DIR = os.path.expanduser("~/.mite")
-
-
-def init_repository(team, api_key):
-    os.makedirs(MITE_DIR, exist_ok=True)
-
-    with open("{}/conf.yaml".format(MITE_DIR), "w+") as f:
-        f.write(yaml.dump({"team": team, "api_key": api_key}))
+INTERACTIVE_MSG = "(will be added interactively if it is not specified)"
 
 
 def parse_date(inp):
     return datetime.strptime(inp, "%Y-%m-%d").date()
+
+
+def has_config():
+    return os.path.exists("{}/conf.yaml".format(MITE_DIR))
 
 
 def get_config():
@@ -72,49 +72,90 @@ def get_service(mite):
     services = mite.list_services()
     return choose_from("service", services)
 
-def add_for(d, minutes, txt=None):
-    if not txt:
-        txt = edit()
 
-    conf = get_config()
-    mite = Mite(conf["team"], conf["api_key"])
+@click.group()
+@click.version_option("0.0.1")
+@click.pass_context
+def cli(ctx):
+    ctx.obj = None
+    if has_config():
+        conf = get_config()
+        ctx.obj = Mite(conf["team"], conf["api_key"])
 
-    project = get_project(mite)
-    service = get_service(mite)
+
+@cli.command()
+@click.pass_obj
+def projects(mite):
+    for proj in mite.list_projects():
+        proj = proj["project"]
+        print("{}: {}".format(proj["id"], proj["name"]))
+
+
+@cli.command()
+@click.pass_obj
+def services(mite):
+    for serv in mite.list_services():
+        serv = serv["service"]
+        print("{}: {}".format(serv["id"], serv["name"]))
+
+
+@cli.command()
+@click.option("--team", required=True,
+              help="The team name on mite (corresponds to your subdomain).")
+@click.option("--api-key", required=True,
+              help="Your API key (you can generate it in your settings).")
+def init(team, api_key):
+    os.makedirs(MITE_DIR, exist_ok=True)
+
+    with open("{}/conf.yaml".format(MITE_DIR), "w+") as f:
+        f.write(yaml.dump({"team": team, "api_key": api_key}))
+
+
+@cli.command()
+@click.option("--date", default=None, help="The date in YYYY-MM-DD format.")
+@click.option("--minutes", default=480, help="The number of minutes.")
+@click.option("--project-id", default=None,
+              help="Project ID {}.".format(INTERACTIVE_MSG))
+@click.option("--service-id", default=None,
+              help="Service ID {}.".format(INTERACTIVE_MSG))
+@click.option("--note", default=None,
+              help="Body message {}.".format(INTERACTIVE_MSG))
+@click.pass_obj
+def add(mite, date, minutes, project_id, service_id, note):
+    given_pid = True
+    given_sid = True
+
+    if not note:
+        note = edit()
+
+    if not project_id:
+        given_pid = False
+        project_id = get_project(mite)
+
+    if not service_id:
+        given_sid = False
+        service_id = get_service(mite)
+
+    if date:
+        date = parse_date(date)
+    else:
+        date = d.today()
 
     res = mite.create_entry(
-        date_at=str(d),
-        minutes=int(minutes),
-        note=txt,
-        project_id=project,
-        service_id=service,
+        date_at=str(date),
+        minutes=minutes,
+        note=note,
+        project_id=project_id,
+        service_id=service_id,
     )
 
-    print("Entry created for {}!".format(d))
+    print("Entry created for {}!".format(date))
+
+    if not given_pid:
+        print("  Project ID: {}".format(project_id))
+    if not given_sid:
+        print("  Service ID: {}".format(service_id))
 
 
-def usage():
-    print("Usage: mite [add|now]")
-    print("  where:")
-    print("    init <team> <apie-key>: initialize local Mite repository")
-    print("    pull: get state of remote Mite")
-    print("    add <date:YYYY-MM-DD> <minutes:int> <text>: add entry 'text' for 'date' (for 'minutes' duration)")
-    print("    add <minutes:int> <text>: add entry 'text' for today")
-    sys.exit(1)
-
-
-def mite():
-    a = sys.argv
-    la = len(a)
-    if la == 4 and a[1] == "init": return init_repository(a[2], a[3])
-    if la == 2 and a[1] == "pull": return pull_repository()
-    if la == 6 and a[1] == "add": return add_for(parse_date(a[2]), *a[3:5])
-    if la == 5 and a[1] == "add": return add_for(parse_date(a[2]), *a[3:4])
-    if la == 4 and a[1] == "add": return add_for(date.today(), *a[2:4])
-    if la == 3 and a[1] == "add": return add_for(date.today(), *a[2:3])
-
-    usage()
-
-
-if __name__ == '__main__':
-    mite()
+if __name__ == "__main__":
+    cli()
