@@ -10,7 +10,12 @@ from datetime import date, datetime
 import yaml
 from mite import Mite
 
+if sys.version_info < (3,):
+    input = raw_input
+
+
 MITE_DIR = os.path.expanduser("~/.mite")
+
 
 def init_repository(team, api_key):
     os.makedirs(MITE_DIR, exist_ok=True)
@@ -45,6 +50,28 @@ def edit():
     return edit_subprocess(editor)
 
 
+def choose_from(name, lst):
+    # this is an ugly hack
+    print("Choose a {} to add the entry to:".format(name))
+    for idx, thng in enumerate(lst):
+        print("[{}] {}".format(idx+1, thng[name]["name"]))
+
+    chosen = ""
+    while not chosen.isnumeric() or not (0 < int(chosen) < idx+1):
+        chosen = input("> ")
+
+    return lst[int(chosen)][name]["id"]
+
+
+def get_project(mite):
+    projects = mite.list_projects()
+    return choose_from("project", projects)
+
+
+def get_service(mite):
+    services = mite.list_services()
+    return choose_from("service", services)
+
 def add_for(d, minutes, txt=None):
     if not txt:
         txt = edit()
@@ -52,10 +79,15 @@ def add_for(d, minutes, txt=None):
     conf = get_config()
     mite = Mite(conf["team"], conf["api_key"])
 
+    project = get_project(mite)
+    service = get_service(mite)
+
     res = mite.create_entry(
         date_at=str(d),
         minutes=int(minutes),
         note=txt,
+        project_id=project,
+        service_id=service,
     )
 
     print("Entry created for {}!".format(d))
