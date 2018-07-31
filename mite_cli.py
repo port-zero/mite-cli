@@ -33,8 +33,9 @@ def get_config():
         return yaml.load(f.read())
 
 
-def edit_subprocess(editor):
+def edit_subprocess(editor, txt):
     f, name = tempfile.mkstemp()
+    os.write(f, bytes(txt, "ascii"))
     # Can't use the file descriptor provided by tempfile.mkstemp in subprocess
     # Thus, we close it and create a NEW file descriptor for use in subprocess.
     os.close(f)
@@ -45,9 +46,9 @@ def edit_subprocess(editor):
     return contents
 
 
-def edit():
+def editor(txt=""):
     editor = os.environ.get("EDITOR", "vi")
-    return edit_subprocess(editor)
+    return edit_subprocess(editor, txt)
 
 
 def choose_from(name, lst):
@@ -57,10 +58,10 @@ def choose_from(name, lst):
         print("[{}] {}".format(idx+1, thng[name]["name"]))
 
     chosen = ""
-    while not chosen.isnumeric() or not (0 < int(chosen) < idx+1):
+    while not chosen.isnumeric() or not (0 < int(chosen) <= idx+1):
         chosen = input("> ")
 
-    return lst[int(chosen)][name]["id"]
+    return lst[int(chosen)-1][name]["id"]
 
 
 def get_project(mite):
@@ -71,6 +72,21 @@ def get_project(mite):
 def get_service(mite):
     services = mite.list_services()
     return choose_from("service", services)
+
+
+def get_entry(mite):
+    print("Choose an entry:")
+    entries = list(reversed(mite.list_entries(sort="date")))
+    for idx, thng in enumerate(entries):
+        thng = thng["time_entry"]
+        print("[{}] {}".format(idx+1, thng["date_at"]))
+        print("\n".join("    {}".format(l) for l in thng["note"].split("\n")))
+
+    chosen = ""
+    while not chosen.isnumeric() or not (0 < int(chosen) <= idx+1):
+        chosen = input("> ")
+
+    return entries[int(chosen)-1]["time_entry"]["id"]
 
 
 @click.group()
@@ -100,6 +116,15 @@ def services(mite):
 
 
 @cli.command()
+@click.pass_obj
+def entries(mite):
+    for entry in reversed(mite.list_entries(sort="date")):
+        entry = entry["time_entry"]
+        print("{}: {}".format(entry["id"], entry["date_at"]))
+        print("\n".join("   {}".format(l) for l in entry["note"].split("\n")))
+
+
+@cli.command()
 @click.option("--team", required=True,
               help="The team name on mite (corresponds to your subdomain).")
 @click.option("--api-key", required=True,
@@ -126,7 +151,7 @@ def add(mite, date, minutes, project_id, service_id, note):
     given_sid = True
 
     if not note:
-        note = edit()
+        note = editor()
 
     if not project_id:
         given_pid = False
@@ -155,6 +180,46 @@ def add(mite, date, minutes, project_id, service_id, note):
         print("  Project ID: {}".format(project_id))
     if not given_sid:
         print("  Service ID: {}".format(service_id))
+
+
+@cli.command()
+@click.option("--id", default=0, help="The entry ID.")
+@click.option("--date", default=None, help="The date in YYYY-MM-DD format.")
+@click.option("--minutes", default=480, help="The number of minutes.")
+@click.option("--project-id", default=None,
+              help="Project ID {}.".format(INTERACTIVE_MSG))
+@click.option("--service-id", default=None,
+              help="Service ID {}.".format(INTERACTIVE_MSG))
+@click.option("--note", default=None,
+              help="Body message {}.".format(INTERACTIVE_MSG))
+@click.pass_obj
+def edit(mite, id, date, minutes, project_id, service_id, note):
+    if not id:
+        id = get_entry(mite)
+
+    entry = mite.get_entry(id)["time_entry"]
+
+    if not note:
+        note = editor(entry["note"])
+
+    if not project_id:
+        project_id = entry["project_id"]
+
+    if not service_id:
+        service_id = entry["service_id"]
+
+    date = parse_date(date or entry["date_at"])
+
+    res = mite.edit_entry(
+        id,
+        date_at=str(date),
+        minutes=minutes,
+        note=note,
+        project_id=project_id,
+        service_id=service_id,
+    )
+
+    print("Entry edited for {}!".format(date))
 
 
 if __name__ == "__main__":

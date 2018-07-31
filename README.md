@@ -13,7 +13,8 @@ pip install mite-cli
 
 ## Usage
 
-There are four subcommands, `init`, `add`, `projects`, and `services`.
+There are six subcommands, `init`, `add`, `edit`, `entries`, `projects`, and
+`services`.
 
 `init` adds your profile configuration, so you don’t have to enter it every
 time. Call it once after installing `mite` like so:
@@ -24,10 +25,9 @@ mite init --team <your mite team name, e.g. portzero> --api-key <your api key>
 
 Learn how to obtain a personalized API key [here](https://mite.yo.lk/en/api/index.html#authentication).
 
-After setting `mite` up, you can then use the `add` command. Right now, this
-verb seems a little redundant, but there are more subcommands to come, promise!
+After setting `mite` up, you can then use the `add`  and `edit` commands.
 
-If you just call `mite add`, it will do the following:
+If you call `mite add` without any arguments, it will do the following:
 
 - Assume that you want to add an entry for today (change by providing the
   `--date` argument)
@@ -44,6 +44,11 @@ If you just call `mite add`, it will do the following:
 
 If you forget those IDs again, simply type `mite projects` or `mite services` to
 fetch and display a list of projects and services and their IDs.
+
+If you want to edit an entry, call `mite edit`. It accepts the same arguments as
+adding, plus an ID. If you don’t have an entry ID handy, you can either search
+for it using `mite entries` or go select it interactively in the command (beware
+that the list of entries might be a little long).
 
 And that’s it!
 
