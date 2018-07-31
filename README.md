@@ -1,7 +1,7 @@
 # mite-cli
 
-A CLI interface for time-tracking in Mite. Currently only adding entries and
-listing projects and services is supported.
+A CLI interface for time-tracking in Mite. Currently only adding and editing
+entries and listing entries, projects and services is supported.
 
 ## Installation
 

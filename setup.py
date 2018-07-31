@@ -6,10 +6,10 @@ with open('README.md') as f:
 setup(
     name='mite-cli',
     author='Veit Heller',
-    version='0.1.0',
+    version='0.1.1',
     license='MIT',
     url='https://github.com/port-zero/mite-cli',
-    downloadurl='https://github.com/port-zero/mite-cli/tarball/0.1.0',
+    downloadurl='https://github.com/port-zero/mite-cli/tarball/0.1.1',
     description='A mite client for the command line',
     long_description=long_description,
     long_description_content_type="text/markdown",
