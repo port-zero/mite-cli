@@ -10,7 +10,7 @@ from datetime import date as d
 
 import click
 import yaml
-from mite import Mite
+from mite import Mite, errors
 
 if sys.version_info < (3,):
     input = raw_input
@@ -51,27 +51,39 @@ def editor(txt=""):
     return edit_subprocess(editor, txt)
 
 
-def choose_from(name, lst):
-    # this is an ugly hack
-    print("Choose a {} to add the entry to:".format(name))
-    for idx, thng in enumerate(lst):
-        print("[{}] {}".format(idx+1, thng[name]["name"]))
-
+def choose_from_list(lst, key):
     chosen = ""
-    while not chosen.isnumeric() or not (0 < int(chosen) <= idx+1):
+    max_idx = len(lst)+1
+    while not chosen.isnumeric() or not (0 < int(chosen) <= max_idx):
         chosen = input("> ")
 
-    return lst[int(chosen)-1][name]["id"]
+    return lst[int(chosen)-1][key]["id"]
 
 
 def get_project(mite):
     projects = mite.list_projects()
-    return choose_from("project", projects)
+    customers = mite.list_customers()
+    print(customers)
+    # this is an ugly hack
+    print("Choose a project to add the entry to:")
+    for idx, thng in enumerate(projects):
+        project = thng["project"]
+        customer_name = ""
+        cs = [c for c in customers
+              if c["customer"]["id"] == project["customer_id"]]
+        if cs:
+            customer_name = cs[0]["customer"]["name"]
+        print("[{}] {} ({})".format(idx+1, project["name"], customer_name))
+
+    return choose_from_list(projects, "project")
 
 
 def get_service(mite):
     services = mite.list_services()
-    return choose_from("service", services)
+    print("Choose a service to add the entry to:")
+    for idx, thng in enumerate(services):
+        print("[{}] {}".format(idx+1, thng["service"]["name"]))
+    return choose_from_list(services, "service")
 
 
 def get_entry(mite):
@@ -160,6 +172,7 @@ def add(mite, date, minutes, project_id, service_id, note):
     if not service_id:
         given_sid = False
         service_id = get_service(mite)
+        print(project_id)
 
     if date:
         date = parse_date(date)
