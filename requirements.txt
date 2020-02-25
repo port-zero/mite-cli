@@ -1,3 +1,4 @@
 click
 mite>=0.0.8
 pyyaml
+iterfzf

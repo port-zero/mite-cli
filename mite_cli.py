@@ -8,6 +8,7 @@ import tempfile
 from datetime import datetime
 from datetime import date as d
 
+from iterfzf import iterfzf
 import click
 import yaml
 from mite import Mite, errors
@@ -50,40 +51,42 @@ def editor(txt=""):
     editor = os.environ.get("EDITOR", "vi")
     return edit_subprocess(editor, txt)
 
-
-def choose_from_list(lst, key):
-    chosen = ""
-    max_idx = len(lst)+1
-    while not chosen.isnumeric() or not (0 < int(chosen) <= max_idx):
-        chosen = input("> ")
-
-    return lst[int(chosen)-1][key]["id"]
+# choices are of form {(selector) -> id}. Only selector gets displayed to the user.
+# function returns the corresponding ID.
+def choose_with_fzf(choices):
+    chs = iterfzf(choices.keys())
+    return choices[chs]
 
 
 def get_project(mite):
     projects = mite.list_projects()
     customers = mite.list_customers()
-    print(customers)
-    # this is an ugly hack
-    print("Choose a project to add the entry to:")
-    for idx, thng in enumerate(projects):
-        project = thng["project"]
-        customer_name = ""
-        cs = [c for c in customers
-              if c["customer"]["id"] == project["customer_id"]]
-        if cs:
-            customer_name = cs[0]["customer"]["name"]
-        print("[{}] {} ({})".format(idx+1, project["name"], customer_name))
 
-    return choose_from_list(projects, "project")
+    # build {cust id -> name}
+    cust = {}
+    for c in customers:
+        c = c["customer"]
+        cust[c["id"]] = c["name"]
+
+    choices = {}
+    for p in map(lambda x: x["project"], projects):
+        cust_name = cust.get(p["customer_id"])
+        full_name = "{} ({})".format(p["name"], cust_name)
+        choices[full_name] = p["id"]
+
+    print("Choose a project to add the entry to:")
+    return choose_with_fzf(choices)
 
 
 def get_service(mite):
     services = mite.list_services()
     print("Choose a service to add the entry to:")
-    for idx, thng in enumerate(services):
-        print("[{}] {}".format(idx+1, thng["service"]["name"]))
-    return choose_from_list(services, "service")
+
+    sv_choices = {}
+    for s in map(lambda x: x["service"], services):
+        sv_choices[s["name"]] = s["id"]
+
+    return choose_with_fzf(sv_choices)
 
 
 def get_entry(mite):
