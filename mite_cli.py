@@ -30,7 +30,7 @@ def has_config():
 
 def get_config():
     with open("{}/conf.yaml".format(MITE_DIR)) as f:
-        return yaml.load(f.read())
+        return yaml.safe_load(f.read())
 
 
 def edit_subprocess(editor, txt):
