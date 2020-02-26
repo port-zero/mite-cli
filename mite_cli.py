@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import json
 import os
 import subprocess
 import sys
@@ -11,10 +10,10 @@ from datetime import date as d
 from iterfzf import iterfzf
 import click
 import yaml
-from mite import Mite, errors
+from mite import Mite
 
 if sys.version_info < (3,):
-    input = raw_input
+    input = raw_input  # noqa: F821
 
 
 MITE_DIR = os.path.expanduser("~/.mite")
@@ -40,7 +39,7 @@ def edit_subprocess(editor, txt):
     # Can't use the file descriptor provided by tempfile.mkstemp in subprocess
     # Thus, we close it and create a NEW file descriptor for use in subprocess.
     os.close(f)
-    rv = subprocess.check_call([editor, name])
+    subprocess.check_call([editor, name])
     with open(name, 'r') as f:
         contents = f.read()
     os.remove(name)
@@ -50,6 +49,7 @@ def edit_subprocess(editor, txt):
 def editor(txt=""):
     editor = os.environ.get("EDITOR", "vi")
     return edit_subprocess(editor, txt)
+
 
 # choices are of form {(selector) -> id}. Only selector gets displayed to the user.
 # function returns the corresponding ID.
@@ -78,8 +78,8 @@ def get_project(mite):
 
 def get_service(mite):
     services = mite.list_services()
-    sv_choices = { s["service"]["name"] : s["service"]["id"]
-                   for s in services}
+    sv_choices = {s["service"]["name"]: s["service"]["id"]
+                  for s in services}
 
     print("Choose a service to add the entry to:")
     return choose_with_fzf(sv_choices)
@@ -179,7 +179,7 @@ def add(mite, date, minutes, project_id, service_id, note):
     else:
         date = d.today()
 
-    res = mite.create_entry(
+    mite.create_entry(
         date_at=str(date),
         minutes=minutes,
         note=note,
@@ -223,7 +223,7 @@ def edit(mite, id, date, minutes, project_id, service_id, note):
 
     date = parse_date(date or entry["date_at"])
 
-    res = mite.edit_entry(
+    mite.edit_entry(
         id,
         date_at=str(date),
         minutes=minutes,
