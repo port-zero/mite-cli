@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import json
 import os
 import subprocess
 import sys
@@ -8,12 +7,13 @@ import tempfile
 from datetime import datetime
 from datetime import date as d
 
+from iterfzf import iterfzf
 import click
 import yaml
-from mite import Mite, errors
+from mite import Mite
 
 if sys.version_info < (3,):
-    input = raw_input
+    input = raw_input  # noqa: F821
 
 
 MITE_DIR = os.path.expanduser("~/.mite")
@@ -39,7 +39,7 @@ def edit_subprocess(editor, txt):
     # Can't use the file descriptor provided by tempfile.mkstemp in subprocess
     # Thus, we close it and create a NEW file descriptor for use in subprocess.
     os.close(f)
-    rv = subprocess.check_call([editor, name])
+    subprocess.check_call([editor, name])
     with open(name, 'r') as f:
         contents = f.read()
     os.remove(name)
@@ -51,43 +51,43 @@ def editor(txt=""):
     return edit_subprocess(editor, txt)
 
 
-def choose_from_list(lst, key):
-    chosen = ""
-    max_idx = len(lst)+1
-    while not chosen.isnumeric() or not (0 < int(chosen) <= max_idx):
-        chosen = input("> ")
-
-    return lst[int(chosen)-1][key]["id"]
+# choices are of form {(selector) -> id}. Only selector gets displayed to the user.
+# function returns the corresponding ID.
+def choose_with_fzf(choices):
+    chs = iterfzf(choices.keys())
+    return choices[chs]
 
 
 def get_project(mite):
     projects = mite.list_projects()
     customers = mite.list_customers()
-    print(customers)
-    # this is an ugly hack
-    print("Choose a project to add the entry to:")
-    for idx, thng in enumerate(projects):
-        project = thng["project"]
-        customer_name = ""
-        cs = [c for c in customers
-              if c["customer"]["id"] == project["customer_id"]]
-        if cs:
-            customer_name = cs[0]["customer"]["name"]
-        print("[{}] {} ({})".format(idx+1, project["name"], customer_name))
 
-    return choose_from_list(projects, "project")
+    # build {cust id -> name}
+    cust = {c["customer"]["id"]: c["customer"]["name"]
+            for c in customers}
+
+    choices = {}
+    for p in map(lambda x: x["project"], projects):
+        cust_name = cust.get(p["customer_id"])
+        full_name = "{} ({})".format(p["name"], cust_name)
+        choices[full_name] = p["id"]
+
+    print("Choose a project to add the entry to:")
+    return choose_with_fzf(choices)
 
 
 def get_service(mite):
     services = mite.list_services()
+    sv_choices = {s["service"]["name"]: s["service"]["id"]
+                  for s in services}
+
     print("Choose a service to add the entry to:")
-    for idx, thng in enumerate(services):
-        print("[{}] {}".format(idx+1, thng["service"]["name"]))
-    return choose_from_list(services, "service")
+    return choose_with_fzf(sv_choices)
 
 
 def get_entry(mite):
     print("Choose an entry:")
+
     entries = list(reversed(mite.list_entries(sort="date")))
     for idx, thng in enumerate(entries):
         thng = thng["time_entry"]
@@ -179,7 +179,7 @@ def add(mite, date, minutes, project_id, service_id, note):
     else:
         date = d.today()
 
-    res = mite.create_entry(
+    mite.create_entry(
         date_at=str(date),
         minutes=minutes,
         note=note,
@@ -223,7 +223,7 @@ def edit(mite, id, date, minutes, project_id, service_id, note):
 
     date = parse_date(date or entry["date_at"])
 
-    res = mite.edit_entry(
+    mite.edit_entry(
         id,
         date_at=str(date),
         minutes=minutes,
