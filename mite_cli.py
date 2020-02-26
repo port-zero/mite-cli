@@ -63,10 +63,8 @@ def get_project(mite):
     customers = mite.list_customers()
 
     # build {cust id -> name}
-    cust = {}
-    for c in customers:
-        c = c["customer"]
-        cust[c["id"]] = c["name"]
+    cust = {c["customer"]["id"]: c["customer"]["name"]
+            for c in customers}
 
     choices = {}
     for p in map(lambda x: x["project"], projects):
@@ -80,17 +78,16 @@ def get_project(mite):
 
 def get_service(mite):
     services = mite.list_services()
+    sv_choices = { s["service"]["name"] : s["service"]["id"]
+                   for s in services}
+
     print("Choose a service to add the entry to:")
-
-    sv_choices = {}
-    for s in map(lambda x: x["service"], services):
-        sv_choices[s["name"]] = s["id"]
-
     return choose_with_fzf(sv_choices)
 
 
 def get_entry(mite):
     print("Choose an entry:")
+
     entries = list(reversed(mite.list_entries(sort="date")))
     for idx, thng in enumerate(entries):
         thng = thng["time_entry"]
