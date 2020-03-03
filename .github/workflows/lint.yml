@@ -1,0 +1,11 @@
+name: CI
+on: [push]
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: lint with black
+        uses: lgeiger/black-action@master
+        args: ". --check"
