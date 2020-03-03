@@ -6,7 +6,8 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v1
       - name: lint with black
         uses: lgeiger/black-action@master
         with:
-          args: ". --check mite_cli.py"
+          args: "--check mite_cli.py"
