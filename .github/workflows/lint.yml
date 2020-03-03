@@ -9,4 +9,4 @@ jobs:
       - name: lint with black
         uses: lgeiger/black-action@master
         with:
-          args: ". --check"
+          args: ". --check mite_cli.py"
