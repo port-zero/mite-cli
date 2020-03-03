@@ -20,13 +20,13 @@ INTERACTIVE_MSG = "(will be added interactively if it is not specified)"
 
 
 def parse_date(inp):
-    '''parse date using dateparsing and return a string in format mite API
+    """parse date using dateparsing and return a string in format mite API
     expects (YYYY-MM-DD)
 
     parse order is not locale specific. Explicit YMD order in case
     of ambigous input
-    '''
-    pd = dateparser.parse(inp, settings={'DATE_ORDER': 'YMD'})
+    """
+    pd = dateparser.parse(inp, settings={"DATE_ORDER": "YMD"})
     if not pd:
         raise Exception("invalid date: {}".format(inp))
     return pd.date().strftime("%Y-%m-%d")
@@ -48,7 +48,7 @@ def edit_subprocess(editor, txt):
     # Thus, we close it and create a NEW file descriptor for use in subprocess.
     os.close(f)
     subprocess.check_call([editor, name])
-    with open(name, 'r') as f:
+    with open(name, "r") as f:
         contents = f.read()
     os.remove(name)
     return contents
@@ -72,8 +72,7 @@ def get_project(mite):
     customers = mite.list_customers()
 
     # build {cust id -> name}
-    cust = {c["customer"]["id"]: c["customer"]["name"]
-            for c in customers}
+    cust = {c["customer"]["id"]: c["customer"]["name"] for c in customers}
 
     choices = {}
     for p in map(lambda x: x["project"], projects):
@@ -87,8 +86,7 @@ def get_project(mite):
 
 def get_service(mite):
     services = mite.list_services()
-    sv_choices = {s["service"]["name"]: s["service"]["id"]
-                  for s in services}
+    sv_choices = {s["service"]["name"]: s["service"]["id"] for s in services}
 
     print("Choose a service to add the entry to:")
     return choose_with_fzf(sv_choices)
@@ -100,14 +98,14 @@ def get_entry(mite):
     entries = list(reversed(mite.list_entries(sort="date")))
     for idx, thng in enumerate(entries):
         thng = thng["time_entry"]
-        print("[{}] {}".format(idx+1, thng["date_at"]))
+        print("[{}] {}".format(idx + 1, thng["date_at"]))
         print("\n".join("    {}".format(l) for l in thng["note"].split("\n")))
 
     chosen = ""
-    while not chosen.isnumeric() or not (0 < int(chosen) <= idx+1):
+    while not chosen.isnumeric() or not (0 < int(chosen) <= idx + 1):
         chosen = input("> ")
 
-    return entries[int(chosen)-1]["time_entry"]["id"]
+    return entries[int(chosen) - 1]["time_entry"]["id"]
 
 
 @click.group()
@@ -123,6 +121,7 @@ def cli(ctx):
 @cli.command()
 @click.pass_obj
 def projects(mite):
+    """lists all projects."""
     for proj in mite.list_projects():
         proj = proj["project"]
         print("{}: {}".format(proj["id"], proj["name"]))
@@ -131,6 +130,7 @@ def projects(mite):
 @cli.command()
 @click.pass_obj
 def services(mite):
+    """lists all services."""
     for serv in mite.list_services():
         serv = serv["service"]
         print("{}: {}".format(serv["id"], serv["name"]))
@@ -139,6 +139,7 @@ def services(mite):
 @cli.command()
 @click.pass_obj
 def entries(mite):
+    """lists all entries."""
     for entry in reversed(mite.list_entries(sort="date")):
         entry = entry["time_entry"]
         print("{}: {}".format(entry["id"], entry["date_at"]))
@@ -146,11 +147,18 @@ def entries(mite):
 
 
 @cli.command()
-@click.option("--team", required=True,
-              help="The team name on mite (corresponds to your subdomain).")
-@click.option("--api-key", required=True,
-              help="Your API key (you can generate it in your settings).")
+@click.option(
+    "--team",
+    required=True,
+    help="The team name on mite (corresponds to your subdomain).",
+)
+@click.option(
+    "--api-key",
+    required=True,
+    help="Your API key (you can generate it in your settings).",
+)
 def init(team, api_key):
+    """initializes mite for a given team and API key."""
     os.makedirs(MITE_DIR, exist_ok=True)
 
     with open("{}/conf.yaml".format(MITE_DIR), "w+") as f:
@@ -160,14 +168,16 @@ def init(team, api_key):
 @cli.command()
 @click.option("--date", default="today", help="The date in YYYY-MM-DD format.")
 @click.option("--minutes", default=480, help="The number of minutes.")
-@click.option("--project-id", default=None,
-              help="Project ID {}.".format(INTERACTIVE_MSG))
-@click.option("--service-id", default=None,
-              help="Service ID {}.".format(INTERACTIVE_MSG))
-@click.option("--note", default=None,
-              help="Body message {}.".format(INTERACTIVE_MSG))
+@click.option(
+    "--project-id", default=None, help="Project ID {}.".format(INTERACTIVE_MSG)
+)
+@click.option(
+    "--service-id", default=None, help="Service ID {}.".format(INTERACTIVE_MSG)
+)
+@click.option("--note", default=None, help="Body message {}.".format(INTERACTIVE_MSG))
 @click.pass_obj
 def add(mite, date, minutes, project_id, service_id, note):
+    """adds entry for a day (defaulting to today)."""
     given_pid = True
     given_sid = True
 
@@ -205,14 +215,16 @@ def add(mite, date, minutes, project_id, service_id, note):
 @click.option("--id", default=0, help="The entry ID.")
 @click.option("--date", default=None, help="The date in YYYY-MM-DD format.")
 @click.option("--minutes", default=480, help="The number of minutes.")
-@click.option("--project-id", default=None,
-              help="Project ID {}.".format(INTERACTIVE_MSG))
-@click.option("--service-id", default=None,
-              help="Service ID {}.".format(INTERACTIVE_MSG))
-@click.option("--note", default=None,
-              help="Body message {}.".format(INTERACTIVE_MSG))
+@click.option(
+    "--project-id", default=None, help="Project ID {}.".format(INTERACTIVE_MSG)
+)
+@click.option(
+    "--service-id", default=None, help="Service ID {}.".format(INTERACTIVE_MSG)
+)
+@click.option("--note", default=None, help="Body message {}.".format(INTERACTIVE_MSG))
 @click.pass_obj
 def edit(mite, id, date, minutes, project_id, service_id, note):
+    """edits an entry."""
     if not id:
         id = get_entry(mite)
 
@@ -240,20 +252,21 @@ def edit(mite, id, date, minutes, project_id, service_id, note):
 
     print("Entry edited for {}!".format(date))
 
+
 # from-date and to-date are strings, so I think its okay to support
 # special keys such as yesterday and today.
 @cli.command()
-@click.option("--from-date", default="yesterday", help="From date"
-              " (default is yesterday)")
-@click.option("--to-date", default="today", help="To date"
-              " (default is today)")
+@click.option(
+    "--from-date", default="yesterday", help="From date" " (default is yesterday)"
+)
+@click.option("--to-date", default="today", help="To date" " (default is today)")
 @click.pass_obj
 def replicate(mite, from_date, to_date):
-    '''Replicate entries from a day to another.
+    """replicates entries from a day to another.
 
     Date parameters accept date either in YYYY-MM-DD format or one of
     the special keywords (yesterday, today, tomorrow)
-    '''
+    """
     f_dt = parse_date(from_date)
     t_dt = parse_date(to_date)
 
@@ -263,21 +276,23 @@ def replicate(mite, from_date, to_date):
     # this?
     entries = mite.list_entries(**{"from": f_dt, "to": f_dt})
     for ent in entries:
-        time_entry = ent['time_entry']
+        time_entry = ent["time_entry"]
 
         mite.create_entry(
-             date_at=t_dt,
-             minutes=time_entry['minutes'],
-             note=time_entry['note'],
-             project_id=time_entry['project_id'],
-             service_id=time_entry['service_id'],
+            date_at=t_dt,
+            minutes=time_entry["minutes"],
+            note=time_entry["note"],
+            project_id=time_entry["project_id"],
+            service_id=time_entry["service_id"],
         )
-        print("created entry: {} — ({}:{})\n{}\n".format(
-            time_entry['minutes'],
-            time_entry['customer_name'],
-            time_entry['project_name'],
-            time_entry['note']
-        ))
+        print(
+            "created entry: {} — ({}:{})\n{}\n".format(
+                time_entry["minutes"],
+                time_entry["customer_name"],
+                time_entry["project_name"],
+                time_entry["note"],
+            )
+        )
 
 
 if __name__ == "__main__":
