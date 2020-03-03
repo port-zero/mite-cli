@@ -4,12 +4,11 @@ import os
 import subprocess
 import sys
 import tempfile
-from datetime import datetime, timedelta
-from datetime import date as d
 
 from iterfzf import iterfzf
 import click
 import yaml
+import dateparser
 from mite import Mite
 
 if sys.version_info < (3,):
@@ -21,15 +20,16 @@ INTERACTIVE_MSG = "(will be added interactively if it is not specified)"
 
 
 def parse_date(inp):
-    day = timedelta(days=1)
-    if inp == "today":
-        return d.today()
-    if inp == "yesterday":
-        return d.today() - day
-    if inp == "tomorrow":
-        return d.today() + day
+    '''parse date using dateparsing and return a string in format mite API
+    expects (YYYY-MM-DD)
 
-    return datetime.strptime(inp, "%Y-%m-%d").date()
+    parse order is not locale specific. Explicit YMD order in case
+    of ambigous input
+    '''
+    pd = dateparser.parse(inp, settings={'DATE_ORDER': 'YMD'})
+    if not pd:
+        raise Exception("invalid date: {}".format(inp))
+    return pd.date().strftime("%Y-%m-%d")
 
 
 def has_config():
@@ -157,7 +157,7 @@ def init(team, api_key):
 
 
 @cli.command()
-@click.option("--date", default=None, help="The date in YYYY-MM-DD format.")
+@click.option("--date", default="today", help="The date in YYYY-MM-DD format.")
 @click.option("--minutes", default=480, help="The number of minutes.")
 @click.option("--project-id", default=None,
               help="Project ID {}.".format(INTERACTIVE_MSG))
@@ -182,10 +182,7 @@ def add(mite, date, minutes, project_id, service_id, note):
         service_id = get_service(mite)
         print(project_id)
 
-    if date:
-        date = parse_date(date)
-    else:
-        date = d.today()
+    date = parse_date(date)
 
     mite.create_entry(
         date_at=str(date),
@@ -268,7 +265,7 @@ def replicate(mite, from_date, to_date):
         time_entry = ent['time_entry']
 
         mite.create_entry(
-             date_at=str(to_date),
+             date_at=t_dt,
              minutes=time_entry['minutes'],
              note=time_entry['note'],
              project_id=time_entry['project_id'],
