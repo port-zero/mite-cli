@@ -246,9 +246,9 @@ def edit(mite, id, date, minutes, project_id, service_id, note):
 # special keys such as yesterday and today.
 @cli.command()
 @click.option("--from-date", default="yesterday", help="From date"
-              " (default is today)")
-@click.option("--to-date", default="today", help="To date"
               " (default is yesterday)")
+@click.option("--to-date", default="today", help="To date"
+              " (default is today)")
 @click.pass_obj
 def replicate(mite, from_date, to_date):
     '''Replicate entries from a day to another.
