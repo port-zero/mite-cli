@@ -4,12 +4,11 @@ import os
 import subprocess
 import sys
 import tempfile
-from datetime import datetime
-from datetime import date as d
 
 from iterfzf import iterfzf
 import click
 import yaml
+import dateparser
 from mite import Mite
 
 if sys.version_info < (3,):
@@ -21,7 +20,16 @@ INTERACTIVE_MSG = "(will be added interactively if it is not specified)"
 
 
 def parse_date(inp):
-    return datetime.strptime(inp, "%Y-%m-%d").date()
+    '''parse date using dateparsing and return a string in format mite API
+    expects (YYYY-MM-DD)
+
+    parse order is not locale specific. Explicit YMD order in case
+    of ambigous input
+    '''
+    pd = dateparser.parse(inp, settings={'DATE_ORDER': 'YMD'})
+    if not pd:
+        raise Exception("invalid date: {}".format(inp))
+    return pd.date().strftime("%Y-%m-%d")
 
 
 def has_config():
@@ -51,7 +59,8 @@ def editor(txt=""):
     return edit_subprocess(editor, txt)
 
 
-# choices are of form {(selector) -> id}. Only selector gets displayed to the user.
+# choices are of form {(selector) -> id}. Only selector gets displayed
+# to the user.
 # function returns the corresponding ID.
 def choose_with_fzf(choices):
     chs = iterfzf(choices.keys())
@@ -149,7 +158,7 @@ def init(team, api_key):
 
 
 @cli.command()
-@click.option("--date", default=None, help="The date in YYYY-MM-DD format.")
+@click.option("--date", default="today", help="The date in YYYY-MM-DD format.")
 @click.option("--minutes", default=480, help="The number of minutes.")
 @click.option("--project-id", default=None,
               help="Project ID {}.".format(INTERACTIVE_MSG))
@@ -174,10 +183,7 @@ def add(mite, date, minutes, project_id, service_id, note):
         service_id = get_service(mite)
         print(project_id)
 
-    if date:
-        date = parse_date(date)
-    else:
-        date = d.today()
+    date = parse_date(date)
 
     mite.create_entry(
         date_at=str(date),
@@ -233,6 +239,45 @@ def edit(mite, id, date, minutes, project_id, service_id, note):
     )
 
     print("Entry edited for {}!".format(date))
+
+# from-date and to-date are strings, so I think its okay to support
+# special keys such as yesterday and today.
+@cli.command()
+@click.option("--from-date", default="yesterday", help="From date"
+              " (default is yesterday)")
+@click.option("--to-date", default="today", help="To date"
+              " (default is today)")
+@click.pass_obj
+def replicate(mite, from_date, to_date):
+    '''Replicate entries from a day to another.
+
+    Date parameters accept date either in YYYY-MM-DD format or one of
+    the special keywords (yesterday, today, tomorrow)
+    '''
+    f_dt = parse_date(from_date)
+    t_dt = parse_date(to_date)
+
+    print("Replicating entries from {} to {}".format(f_dt, t_dt))
+
+    # from=f_dt obviously won't fly, but is there a better way to pass
+    # this?
+    entries = mite.list_entries(**{"from": f_dt, "to": f_dt})
+    for ent in entries:
+        time_entry = ent['time_entry']
+
+        mite.create_entry(
+             date_at=t_dt,
+             minutes=time_entry['minutes'],
+             note=time_entry['note'],
+             project_id=time_entry['project_id'],
+             service_id=time_entry['service_id'],
+        )
+        print("created entry: {} — ({}:{})\n{}\n".format(
+            time_entry['minutes'],
+            time_entry['customer_name'],
+            time_entry['project_name'],
+            time_entry['note']
+        ))
 
 
 if __name__ == "__main__":

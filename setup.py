@@ -19,7 +19,8 @@ setup(
         'click',
         'mite>=0.0.8',
         'pyyaml',
-        'iterfzf'
+        'iterfzf',
+        'dateparser'
     ],
     entry_points="""
         [console_scripts]
