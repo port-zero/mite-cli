@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from datetime import date as d
 
 from iterfzf import iterfzf
@@ -21,6 +21,14 @@ INTERACTIVE_MSG = "(will be added interactively if it is not specified)"
 
 
 def parse_date(inp):
+    day = timedelta(days=1)
+    if inp == "today":
+        return d.today()
+    if inp == "yesterday":
+        return d.today() - day
+    if inp == "tomorrow":
+        return d.today() + day
+
     return datetime.strptime(inp, "%Y-%m-%d").date()
 
 
@@ -233,6 +241,45 @@ def edit(mite, id, date, minutes, project_id, service_id, note):
     )
 
     print("Entry edited for {}!".format(date))
+
+# from-date and to-date are strings, so I think its okay to support
+# special keys such as yesterday and today.
+@cli.command()
+@click.option("--from-date", default="yesterday", help="From date"
+              " (default is today)")
+@click.option("--to-date", default="today", help="To date"
+              " (default is yesterday)")
+@click.pass_obj
+def replicate(mite, from_date, to_date):
+    '''Replicate entries from a day to another.
+
+    Date parameters accept date either in YYYY-MM-DD format or one of
+    the special keywords (yesterday, today, tomorrow)
+    '''
+    f_dt = parse_date(from_date)
+    t_dt = parse_date(to_date)
+
+    print("Replicating entries from {} to {}".format(f_dt, t_dt))
+
+    # from=f_dt obviously won't fly, but is there a better way to pass
+    # this?
+    entries = mite.list_entries(**{"from": f_dt, "to": f_dt})
+    for ent in entries:
+        time_entry = ent['time_entry']
+
+        mite.create_entry(
+             date_at=str(to_date),
+             minutes=time_entry['minutes'],
+             note=time_entry['note'],
+             project_id=time_entry['project_id'],
+             service_id=time_entry['service_id'],
+        )
+        print("created entry: {} — ({}:{})\n{}\n".format(
+            time_entry['minutes'],
+            time_entry['customer_name'],
+            time_entry['project_name'],
+            time_entry['note']
+        ))
 
 
 if __name__ == "__main__":
