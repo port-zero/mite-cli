@@ -59,7 +59,8 @@ def editor(txt=""):
     return edit_subprocess(editor, txt)
 
 
-# choices are of form {(selector) -> id}. Only selector gets displayed to the user.
+# choices are of form {(selector) -> id}. Only selector gets displayed
+# to the user.
 # function returns the corresponding ID.
 def choose_with_fzf(choices):
     chs = iterfzf(choices.keys())
