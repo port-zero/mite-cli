@@ -166,8 +166,12 @@ def init(team, api_key):
 
 
 @cli.command()
-@click.option("--date", default="today", help="The date in YYYY-MM-DD format.")
-@click.option("--minutes", default=480, help="The number of minutes.")
+@click.option(
+    "--date", default="today", help="The date in YYYY-MM-DD format.", show_default=True
+)
+@click.option(
+    "--minutes", default=480, help="The number of minutes.", show_default=True
+)
 @click.option(
     "--project-id", default=None, help="Project ID {}.".format(INTERACTIVE_MSG)
 )
@@ -212,9 +216,11 @@ def add(mite, date, minutes, project_id, service_id, note):
 
 
 @cli.command()
-@click.option("--id", default=0, help="The entry ID.")
+@click.option("--id", default=0, help="The entry ID.", show_default=True)
 @click.option("--date", default=None, help="The date in YYYY-MM-DD format.")
-@click.option("--minutes", default=480, help="The number of minutes.")
+@click.option(
+    "--minutes", default=480, help="The number of minutes.", show_default=True
+)
 @click.option(
     "--project-id", default=None, help="Project ID {}.".format(INTERACTIVE_MSG)
 )
@@ -256,10 +262,8 @@ def edit(mite, id, date, minutes, project_id, service_id, note):
 # from-date and to-date are strings, so I think its okay to support
 # special keys such as yesterday and today.
 @cli.command()
-@click.option(
-    "--from-date", default="yesterday", help="From date" " (default is yesterday)"
-)
-@click.option("--to-date", default="today", help="To date" " (default is today)")
+@click.option("--from-date", default="yesterday", help="From date", show_default=True)
+@click.option("--to-date", default="today", help="To date", show_default=True)
 @click.pass_obj
 def replicate(mite, from_date, to_date):
     """replicates entries from a day to another.
